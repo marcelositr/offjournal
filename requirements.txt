@@ -1,0 +1,1 @@
+# Adicione bibliotecas Python conforme o projeto evoluir
