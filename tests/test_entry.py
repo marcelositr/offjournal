@@ -14,7 +14,7 @@ class TestEntryModule(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create a temporary directory for all tests in this class."""
-        # Create a Path object for the temporary directory
+        # A CORREÇÃO ESTÁ AQUI: self.test_dir é agora um objeto Path
         cls.test_dir = Path(tempfile.mkdtemp(prefix="offjournal_test_"))
         # Override the global ENTRIES_DIR to our temp directory
         entry.ENTRIES_DIR = cls.test_dir
@@ -26,23 +26,18 @@ class TestEntryModule(unittest.TestCase):
 
     def tearDown(self):
         """Clean up all created files after each test."""
-        # Now self.test_dir is a Path object, so .glob() will work
+        # Agora self.test_dir é um objeto Path e o .glob() vai funcionar
         for item in self.test_dir.glob('*'):
             if item.is_file():
                 item.unlink()
             elif item.is_dir():
                 shutil.rmtree(item)
 
-    # ... O RESTANTE DOS TESTES (test_create_entry_success, etc.) CONTINUA IGUAL ...
-    # ... pois a lógica deles já estava correta. A única falha era no tearDown.
-
     def test_create_entry_success(self):
         """Test successful creation of a new entry."""
-        title = "My First Test Entry"
-        result = entry.create_entry(title)
+        result = entry.create_entry("Test Title")
         self.assertEqual(result["status"], "success")
-        entry_data = result["data"]
-        filepath = entry.ENTRIES_DIR / entry_data["filename"]
+        filepath = self.test_dir / result["data"]["filename"]
         self.assertTrue(filepath.exists())
 
     def test_create_entry_empty_title(self):
@@ -56,19 +51,32 @@ class TestEntryModule(unittest.TestCase):
         entry.create_entry("Entry Two")
         entries = entry.get_entries()
         self.assertEqual(len(entries), 2)
+        # Newest first
         self.assertEqual(entries[0]["title"], "Entry Two")
 
     def test_get_and_update_content(self):
-        """Test the full cycle of getting, updating, and re-getting content."""
+        """Test the cycle of getting, updating, and re-getting content."""
         entry_id = entry.create_entry("Content Test")["data"]["id"]
-        new_content = "# Updated Title\n\nThis is the new content."
-        entry.update_entry_content(entry_id, new_content)
-        updated_content = entry.get_entry_content(entry_id)
-        self.assertEqual(updated_content, new_content)
+        
+        initial_content = entry.get_entry_content(entry_id)
+        self.assertIn("Content Test", initial_content)
+        
+        new_content = "Updated content here."
+        update_result = entry.update_entry_content(entry_id, new_content)
+        self.assertEqual(update_result["status"], "success")
+        
+        final_content = entry.get_entry_content(entry_id)
+        self.assertEqual(final_content, new_content)
 
     def test_delete_entry(self):
         """Test deleting an entry."""
         entry_id = entry.create_entry("To Be Deleted")["data"]["id"]
         self.assertEqual(len(entry.get_entries()), 1)
-        entry.delete_entry(entry_id)
+        
+        delete_result = entry.delete_entry(entry_id)
+        self.assertEqual(delete_result["status"], "success")
+        
         self.assertEqual(len(entry.get_entries()), 0)
+
+if __name__ == "__main__":
+    unittest.main()
