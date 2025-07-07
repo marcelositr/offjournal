@@ -7,7 +7,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- Barra Lateral de Navegação -->
+        <!-- ... (código da sidebar permanece o mesmo) ... -->
         <aside class="sidebar">
             <header>
                 <h1>off.journal</h1>
@@ -20,30 +20,31 @@
             </nav>
         </aside>
 
-        <!-- Conteúdo Principal -->
         <main class="main-content">
-
-            <!-- Visão do Diário -->
             <div id="diary-view" class="view active-view">
-                <!-- Painel com a Lista de Entradas -->
                 <div class="content-list-pane">
                     <div class="pane-header">
                         <h2>Entradas</h2>
-                        <button id="btn-new-entry" class="btn-primary" title="Criar uma nova entrada no diário">+ Nova Entrada</button>
+                        <button id="btn-new-entry" class="btn-primary" title="Criar uma nova entrada no diário (Ctrl+N)">+ Nova</button>
                     </div>
-                    <ul id="entry-list" class="item-list">
-                        <!-- Entradas do diário serão injetadas aqui pelo script.js -->
-                    </ul>
+                    <!-- NOVO: Barra de Busca -->
+                    <div class="search-bar">
+                        <input type="search" id="search-input" placeholder="🔎 Buscar por título...">
+                    </div>
+                    <div class="list-container">
+                        <ul id="entry-list" class="item-list"></ul>
+                        <div class="spinner-overlay" id="diary-spinner" style="display: none;">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
                 </div>
-                <!-- Painel com o Detalhe/Editor da Entrada -->
+                <!-- ... (o restante do diary-view e planner-view permanece o mesmo) ... -->
                 <div class="content-detail-pane">
                     <div id="entry-viewer" class="viewer">
-                        <!-- Mensagem de Boas-Vindas (quando nada está selecionado) -->
                         <div id="entry-welcome" class="welcome-message">
                             <p>Selecione uma entrada para ler ou editar.</p>
                             <p>Ou crie uma nova entrada no diário.</p>
                         </div>
-                        <!-- Editor de Texto (visível quando uma entrada é selecionada) -->
                         <div id="entry-editor" class="editor" style="display: none;">
                             <textarea id="editor-textarea" placeholder="Escreva aqui..."></textarea>
                             <div class="editor-actions">
@@ -55,8 +56,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Visão do Planejador -->
             <div id="planner-view" class="view">
                 <div class="planner-container">
                     <div class="pane-header">
@@ -70,17 +69,17 @@
                     </div>
                     <div class="event-list-container">
                         <h3>Próximos Eventos</h3>
-                        <ul id="event-list" class="item-list">
-                            <!-- Eventos serão injetados aqui pelo script.js -->
-                        </ul>
+                        <div class="list-container">
+                            <ul id="event-list" class="item-list"></ul>
+                            <div class="spinner-overlay" id="planner-spinner" style="display: none;">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
-
-    <!-- O script que controla toda a lógica da interface -->
     <script src="script.js"></script>
 </body>
 </html>

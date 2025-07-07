@@ -130,6 +130,13 @@ body {
 }
 
 /* --- Listas de Itens (Entradas e Eventos) --- */
+.list-container {
+    position: relative;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 .item-list {
     list-style: none;
     overflow-y: auto;
@@ -176,6 +183,30 @@ body {
     text-align: center;
     color: var(--text-secondary);
     cursor: default;
+}
+
+/* --- Ícone de Carregamento (Spinner) --- */
+.spinner-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(40, 44, 52, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--text-secondary);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* --- Editor de Entrada --- */
@@ -263,6 +294,10 @@ body {
     color: white;
 }
 
+.event-list-container {
+    margin-top: 2rem;
+}
+
 .event-list-container h3 {
     margin-bottom: 1rem;
     color: white;
@@ -331,4 +366,24 @@ body {
 }
 .btn-delete-event:hover {
     color: var(--danger-color);
+}
+
+.search-bar {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--bg-darker);
+}
+
+#search-input {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: var(--bg-dark);
+    border: 1px solid var(--bg-light);
+    border-radius: 5px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
 }

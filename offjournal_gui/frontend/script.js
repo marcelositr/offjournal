@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let state = {
         currentView: 'diary',
         currentEntryId: null,
-        isDirty: false, // Flag to check if the editor has unsaved changes
+        isDirty: false,
+        allEntries: [], // NOVO: Armazena a lista completa de entradas recebida do backend
     };
 
     // --- Debounce for saving ---
@@ -22,12 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         entryList: document.getElementById('entry-list'),
         eventList: document.getElementById('event-list'),
+        spinners: {
+            diary: document.getElementById('diary-spinner'),
+            planner: document.getElementById('planner-spinner'),
+        },
+        searchInput: document.getElementById('search-input'), // NOVO: Referência ao campo de busca
         entryWelcome: document.getElementById('entry-welcome'),
         entryEditor: document.getElementById('entry-editor'),
         editorTextarea: document.getElementById('editor-textarea'),
         saveStatus: document.getElementById('save-status'),
-        btnSaveEntry: document.getElementById('btn-save-entry'),
-        btnDeleteEntry: document.getElementById('btn-delete-entry'),
         btnNewEntry: document.getElementById('btn-new-entry'),
         btnAddEvent: document.getElementById('btn-add-event'),
         plannerDate: document.getElementById('planner-date'),
@@ -37,11 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- API Communication Layer ---
     const api = {
         send: (command, payload = {}) => {
+            const spinner = command.startsWith('entries:') ? elements.spinners.diary : elements.spinners.planner;
+            if (spinner) spinner.style.display = 'flex';
+
             try {
                 window.webkit.messageHandlers.bridge.postMessage(JSON.stringify({ command, payload }));
             } catch (error) {
-                console.error("Falha na comunicação com o backend Python. A aplicação está sendo executada no modo GUI?", error);
-                alert("Erro de comunicação: Não foi possível contatar o backend.");
+                console.error("Falha na comunicação com o backend Python.", error);
+                if (spinner) spinner.style.display = 'none';
             }
         },
         entries: {
@@ -58,9 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- UI Rendering ---
+    // --- UI Rendering & Logic ---
     const ui = {
         switchView(viewName) {
+            if (state.isDirty && !confirm("Você tem alterações não salvas. Deseja descartá-las?")) return;
+            ui.showWelcome();
+
             state.currentView = viewName;
             Object.values(elements.views).forEach(v => v.classList.remove('active-view'));
             Object.values(elements.navButtons).forEach(b => b.classList.remove('active'));
@@ -70,13 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewName === 'diary') api.entries.list();
             if (viewName === 'planner') api.planner.list();
         },
-        renderEntryList(entries) {
+        renderEntryList(entriesToRender) {
             elements.entryList.innerHTML = '';
-            if (!entries || entries.length === 0) {
+            if (!entriesToRender || entriesToRender.length === 0) {
                 elements.entryList.innerHTML = '<li class="empty-list">Nenhuma entrada encontrada.</li>';
                 return;
             }
-            entries.forEach(entry => {
+            entriesToRender.forEach(entry => {
                 const li = document.createElement('li');
                 li.dataset.id = entry.id;
                 li.className = (entry.id === state.currentEntryId) ? 'selected' : '';
@@ -90,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         renderEventList(events) {
             elements.eventList.innerHTML = '';
-            if (!events || events.length === 0) {
+             if (!events || events.length === 0) {
                 elements.eventList.innerHTML = '<li class="empty-list">Nenhum evento no planejador.</li>';
                 return;
             }
@@ -124,36 +134,39 @@ document.addEventListener('DOMContentLoaded', () => {
             state.isDirty = false;
             document.querySelectorAll('#entry-list li').forEach(item => item.classList.remove('selected'));
         },
-        updateSaveStatus(message, isError = false) {
+        updateSaveStatus(message, isError = false, persistent = false) {
             elements.saveStatus.textContent = message;
             elements.saveStatus.style.color = isError ? 'var(--danger-color)' : 'var(--text-secondary)';
             clearTimeout(statusTimeout);
-            statusTimeout = setTimeout(() => elements.saveStatus.textContent = '', 3000);
+            if (!persistent) {
+                statusTimeout = setTimeout(() => elements.saveStatus.textContent = '', 3000);
+            }
         }
     };
 
-    // --- Event Handlers & Logic ---
+    // --- Event Handlers ---
     const handlers = {
         selectEntry(id) {
-            if (state.isDirty && !confirm("Você tem alterações não salvas. Deseja descartá-las?")) {
-                return;
-            }
+            if (state.isDirty && !confirm("Você tem alterações não salvas. Deseja descartá-las?")) return;
+            
             state.currentEntryId = id;
             api.entries.getContent(id);
             document.querySelectorAll('#entry-list li').forEach(item => item.classList.remove('selected'));
             document.querySelector(`#entry-list li[data-id='${id}']`)?.classList.add('selected');
         },
         saveCurrentEntry() {
-            if (state.currentEntryId) {
+            if (state.currentEntryId && state.isDirty) {
                 api.entries.update(state.currentEntryId, elements.editorTextarea.value);
                 state.isDirty = false;
             }
         },
         onEditorInput() {
-            state.isDirty = true;
-            ui.updateSaveStatus('Alterações não salvas...');
+            if (!state.isDirty) {
+                state.isDirty = true;
+                ui.updateSaveStatus('Alterações pendentes...', false, true);
+            }
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(handlers.saveCurrentEntry, 2000); // Auto-save after 2 seconds of inactivity
+            saveTimeout = setTimeout(handlers.saveCurrentEntry, 1500);
         },
         createNewEntry() {
             const title = prompt("Digite o título para a nova entrada:", "Nova Entrada");
@@ -180,56 +193,89 @@ document.addEventListener('DOMContentLoaded', () => {
                 api.planner.delete(id);
             }
         },
+        navigateEntryList(direction) {
+            const items = Array.from(elements.entryList.querySelectorAll('li[data-id]'));
+            if (items.length === 0) return;
+
+            const currentIndex = items.findIndex(item => item.dataset.id === state.currentEntryId);
+            let nextIndex;
+
+            if (direction === 'down') {
+                nextIndex = (currentIndex === -1) ? 0 : Math.min(currentIndex + 1, items.length - 1);
+            } else { // 'up'
+                nextIndex = (currentIndex <= 0) ? 0 : currentIndex - 1;
+            }
+            
+            items[nextIndex].click();
+        },
         handleKeyDown(e) {
-            // Salvar com Ctrl+S
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
-                clearTimeout(saveTimeout); // Prevent auto-save from firing
+                clearTimeout(saveTimeout);
                 handlers.saveCurrentEntry();
+                return;
             }
-        }
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                if (state.currentView === 'diary') {
+                    handlers.createNewEntry();
+                }
+                return;
+            }
+            if (state.currentView === 'diary' && !e.target.matches('textarea, input')) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    handlers.navigateEntryList('down');
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    handlers.navigateEntryList('up');
+                }
+            }
+        },
+        // NOVO: Lógica para filtrar as entradas
+        filterEntries() {
+            const searchTerm = elements.searchInput.value.toLowerCase();
+            if (!searchTerm) {
+                ui.renderEntryList(state.allEntries); // Mostra tudo se a busca estiver vazia
+                return;
+            }
+            const filteredEntries = state.allEntries.filter(entry => 
+                entry.title.toLowerCase().includes(searchTerm)
+            );
+            ui.renderEntryList(filteredEntries);
+        },
     };
 
     // --- Python Response Handler ---
-    window.handlePythonResponse = (response) => {
-        console.log('Received from Python:', response);
-        const { status, command, data, message } = response;
+    window.handlePythonResponse = ({ status, command, data, message }) => {
+        const spinner = command.startsWith('entries:') ? elements.spinners.diary : elements.spinners.planner;
+        if (spinner) spinner.style.display = 'none';
 
         if (status === 'error') {
-            alert(`Erro no comando '${command}': ${message}`);
-            ui.updateSaveStatus(`Erro: ${message}`, true);
+            alert(`Erro no comando '${command}': ${message || data?.message || 'Erro desconhecido'}`);
             return;
         }
 
         switch (command) {
             case 'entries:list':
-                ui.renderEntryList(data);
+                state.allEntries = data; // Armazena a lista completa
+                handlers.filterEntries(); // Renderiza com base no filtro atual
                 break;
-            case 'entries:get_content':
-                ui.showEditor(data);
-                break;
-            case 'entries:update':
-                if (data.status === 'success') {
-                    ui.updateSaveStatus(data.message);
-                } else {
-                    ui.updateSaveStatus(data.message, true);
-                }
-                break;
+            case 'entries:get_content': ui.showEditor(data); break;
+            case 'entries:update': ui.updateSaveStatus(data.message, data.status === 'error'); break;
             case 'entries:create':
-                state.currentEntryId = data.data.id;
-                api.entries.list(); // Refresh list
-                handlers.selectEntry(state.currentEntryId);
+                elements.searchInput.value = ''; // Limpa a busca para a nova entrada aparecer
+                api.entries.list();
+                handlers.selectEntry(data.data.id);
                 break;
             case 'entries:delete':
                 ui.showWelcome();
-                api.entries.list(); // Refresh list
+                api.entries.list();
                 break;
-            case 'planner:list':
-                ui.renderEventList(data);
-                break;
+            case 'planner:list': ui.renderEventList(data); break;
             case 'planner:add':
             case 'planner:delete':
-                 api.planner.list(); // Refresh list on add/delete
+                 api.planner.list();
                  if (command === 'planner:add' && data.status === 'success') {
                      elements.plannerTitle.value = '';
                      elements.plannerTitle.focus();
@@ -238,19 +284,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Initialize ---
+    // --- Initialize Application ---
     const init = () => {
-        // Setup event listeners
-        elements.navButtons.diary.addEventListener('click', () => ui.switchView('diary'));
-        elements.navButtons.planner.addEventListener('click', () => ui.switchView('planner'));
-        elements.btnNewEntry.addEventListener('click', handlers.createNewEntry);
-        elements.btnSaveEntry.addEventListener('click', handlers.saveCurrentEntry);
-        elements.btnDeleteEntry.addEventListener('click', handlers.deleteCurrentEntry);
+        // Event listeners para cliques
+        document.getElementById('nav-diary').addEventListener('click', () => ui.switchView('diary'));
+        document.getElementById('nav-planner').addEventListener('click', () => ui.switchView('planner'));
+        document.getElementById('btn-new-entry').addEventListener('click', handlers.createNewEntry);
+        document.getElementById('btn-save-entry').addEventListener('click', handlers.saveCurrentEntry);
+        document.getElementById('btn-delete-entry').addEventListener('click', handlers.deleteCurrentEntry);
         elements.btnAddEvent.addEventListener('click', handlers.addNewEvent);
+        
+        // Event listeners para teclado
         elements.editorTextarea.addEventListener('input', handlers.onEditorInput);
         document.addEventListener('keydown', handlers.handleKeyDown);
+        
+        elements.plannerTitle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handlers.addNewEvent();
+            }
+        });
 
-        // Set planner date to today and load initial view
+        // NOVO: Event listener para o campo de busca
+        elements.searchInput.addEventListener('input', handlers.filterEntries);
+
         elements.plannerDate.value = new Date().toISOString().split('T')[0];
         ui.switchView('diary');
     };
