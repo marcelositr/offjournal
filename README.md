@@ -5,6 +5,7 @@
 [![GUI: GTK3 + WebKit](https://img.shields.io/badge/GUI-GTK3%20%2B%20WebKit-729fcf.svg?style=flat&logo=gtk)](https://www.gtk.org/)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-FCC624.svg?style=flat&logo=linux)](https://www.kernel.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Testes do Projeto Python](https://github.com/marcelositr/offjournal/actions/workflows/python-app.yml/badge.svg)](https://github.com/marcelositr/offjournal/actions/workflows/python-app.yml)
 
 Um diário e planejador 100% offline, seguro e privado, com interfaces para o terminal (CLI) e gráfica (GUI).
 
