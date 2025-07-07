@@ -1,44 +1,48 @@
+# tests/test_media.py
+
 import unittest
 import tempfile
 import shutil
 from pathlib import Path
+
 import core.media as media
 
 class TestMediaModule(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.test_base_dir = tempfile.mkdtemp(prefix="offjournal_media_test_")
+        media.MEDIA_DIR = Path(cls.test_base_dir)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.test_base_dir)
+
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        media.MEDIA_DIR = Path(self.temp_dir.name) / "media"
-        media.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-        self.entry_id = "test_entry"
-        self.test_file_path = Path(self.temp_dir.name) / "test_media.txt"
-        self.test_file_path.write_text("dummy media content", encoding="utf-8")
+        self.entry_id = "20250715120000_test_entry"
+        self.source_media_file = media.MEDIA_DIR / "source_image.jpg"
+        self.source_media_file.write_text("dummy image content")
 
     def tearDown(self):
-        self.temp_dir.cleanup()
+        entry_media_dir = media.MEDIA_DIR / self.entry_id
+        if entry_media_dir.exists():
+            shutil.rmtree(entry_media_dir)
+        if self.source_media_file.exists():
+            self.source_media_file.unlink()
 
-    def test_add_media(self):
-        media.add_media(self.entry_id, str(self.test_file_path))
-        dest_file = media.MEDIA_DIR / self.entry_id / self.test_file_path.name
-        self.assertTrue(dest_file.exists())
+    def test_add_list_remove_cycle(self):
+        # Add media
+        add_result = media.add_media(self.entry_id, str(self.source_media_file))
+        self.assertEqual(add_result["status"], "success")
 
-    def test_list_media(self):
-        media.add_media(self.entry_id, str(self.test_file_path))
-        from io import StringIO
-        import sys
-        captured_output = StringIO()
-        sys.stdout = captured_output
+        # List media
+        list_result = media.list_media(self.entry_id)
+        self.assertEqual(list_result["status"], "success")
+        self.assertIn(self.source_media_file.name, list_result["data"])
 
-        media.list_media(self.entry_id)
+        # Remove media
+        remove_result = media.remove_media(self.entry_id, self.source_media_file.name)
+        self.assertEqual(remove_result["status"], "success")
 
-        sys.stdout = sys.__stdout__
-        output = captured_output.getvalue()
-        self.assertIn(self.test_file_path.name, output)
-
-    def test_remove_media(self):
-        media.add_media(self.entry_id, str(self.test_file_path))
-        media.remove_media(self.entry_id, self.test_file_path.name)
-        dest_file = media.MEDIA_DIR / self.entry_id / self.test_file_path.name
-        self.assertFalse(dest_file.exists())
-
-if __name__ == "__main__":
-    unittest.main()
+        # Verify it's gone
+        final_list = media.list_media(self.entry_id)
+        self.assertEqual(len(final_list["data"]), 0)
