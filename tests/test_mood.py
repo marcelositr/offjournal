@@ -1,62 +1,76 @@
+# tests/test_mood.py
+
 import unittest
 import tempfile
+import shutil
 from pathlib import Path
+
+# Override ENTRIES_DIR before importing the module
 import core.mood as mood
 
 class TestMoodModule(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        mood.ENTRIES_DIR = Path(self.temp_dir.name)
+    @classmethod
+    def setUpClass(cls):
+        """Create a temporary directory for all mood analysis tests."""
+        cls.test_dir = tempfile.mkdtemp(prefix="offjournal_mood_test_")
+        # Override the global ENTRIES_DIR to our temp directory
+        mood.ENTRIES_DIR = Path(cls.test_dir)
 
-        # Cria duas entradas: uma com palavras positivas e outra negativas
-        (mood.ENTRIES_DIR / "20250706120000_positive.md").write_text(
-            "I am very happy and excited today!", encoding="utf-8")
-        (mood.ENTRIES_DIR / "20250706120001_negative.md").write_text(
-            "I feel sad and frustrated.", encoding="utf-8")
+        # Create a positive and a negative entry for testing
+        cls.positive_id = "20250715100000"
+        (mood.ENTRIES_DIR / f"{cls.positive_id}_positive_day.md").write_text(
+            "# Dia Incrível\n\nEstou muito feliz e animado hoje! Que dia fantástico.", 
+            encoding="utf-8"
+        )
 
-    def tearDown(self):
-        self.temp_dir.cleanup()
+        cls.negative_id = "20250715100100"
+        (mood.ENTRIES_DIR / f"{cls.negative_id}_negative_day.md").write_text(
+            "# Dia Ruim\n\nMe sinto triste e frustrado. Foi um dia péssimo.",
+            encoding="utf-8"
+        )
+        
+        cls.neutral_id = "20250715100200"
+        (mood.ENTRIES_DIR / f"{cls.neutral_id}_neutral_day.md").write_text(
+            "# Apenas um Dia\n\nO dia foi normal, sem grandes eventos.",
+            encoding="utf-8"
+        )
 
-    def test_analyze_specific_entry(self):
-        from io import StringIO
-        import sys
+    @classmethod
+    def tearDownClass(cls):
+        """Remove the temporary directory after all tests."""
+        shutil.rmtree(cls.test_dir)
 
-        captured_output = StringIO()
-        sys.stdout = captured_output
+    def test_analyze_positive_entry(self):
+        """Test mood analysis on a predominantly positive entry."""
+        result = mood.analyze_entry_mood(self.positive_id)
+        
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["mood"], "Positivo")
+        self.assertGreater(result["positive_score"], result["negative_score"])
 
-        mood.analyze_mood("20250706120000_positive")
+    def test_analyze_negative_entry(self):
+        """Test mood analysis on a predominantly negative entry."""
+        result = mood.analyze_entry_mood(self.negative_id)
+        
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["mood"], "Negativo")
+        self.assertGreater(result["negative_score"], result["positive_score"])
 
-        sys.stdout = sys.__stdout__
-        output = captured_output.getvalue()
-        self.assertIn("Positive", output)
+    def test_analyze_neutral_entry(self):
+        """Test mood analysis on a neutral entry with no keywords."""
+        result = mood.analyze_entry_mood(self.neutral_id)
+        
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["mood"], "Neutro")
+        self.assertEqual(result["positive_score"], 0)
+        self.assertEqual(result["negative_score"], 0)
 
-    def test_analyze_all_entries(self):
-        from io import StringIO
-        import sys
-
-        captured_output = StringIO()
-        sys.stdout = captured_output
-
-        mood.analyze_mood()
-
-        sys.stdout = sys.__stdout__
-        output = captured_output.getvalue()
-        self.assertIn("Positive", output)
-        self.assertIn("Negative", output)
-
-    def test_entry_not_found(self):
-        from io import StringIO
-        import sys
-
-        captured_output = StringIO()
-        sys.stdout = captured_output
-
-        mood.analyze_mood("nonexistent")
-
-        sys.stdout = sys.__stdout__
-        output = captured_output.getvalue()
-        self.assertIn("Entry 'nonexistent' not found", output)
+    def test_analyze_non_existent_entry(self):
+        """Test analyzing an entry that does not exist."""
+        result = mood.analyze_entry_mood("nonexistent123")
+        
+        self.assertEqual(result["status"], "error")
+        self.assertIn("não encontrada", result["message"])
 
 if __name__ == "__main__":
     unittest.main()
-
