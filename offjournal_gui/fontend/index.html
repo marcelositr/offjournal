@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>off.journal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Barra Lateral de Navegação -->
+        <aside class="sidebar">
+            <header>
+                <h1>off.journal</h1>
+            </header>
+            <nav>
+                <ul>
+                    <li><button id="nav-diary" class="nav-button active" title="Ver entradas do diário">Diário</button></li>
+                    <li><button id="nav-planner" class="nav-button" title="Acessar o planejador">Planejador</button></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+
+            <!-- Visão do Diário -->
+            <div id="diary-view" class="view active-view">
+                <!-- Painel com a Lista de Entradas -->
+                <div class="content-list-pane">
+                    <div class="pane-header">
+                        <h2>Entradas</h2>
+                        <button id="btn-new-entry" class="btn-primary" title="Criar uma nova entrada no diário">+ Nova Entrada</button>
+                    </div>
+                    <ul id="entry-list" class="item-list">
+                        <!-- Entradas do diário serão injetadas aqui pelo script.js -->
+                    </ul>
+                </div>
+                <!-- Painel com o Detalhe/Editor da Entrada -->
+                <div class="content-detail-pane">
+                    <div id="entry-viewer" class="viewer">
+                        <!-- Mensagem de Boas-Vindas (quando nada está selecionado) -->
+                        <div id="entry-welcome" class="welcome-message">
+                            <p>Selecione uma entrada para ler ou editar.</p>
+                            <p>Ou crie uma nova entrada no diário.</p>
+                        </div>
+                        <!-- Editor de Texto (visível quando uma entrada é selecionada) -->
+                        <div id="entry-editor" class="editor" style="display: none;">
+                            <textarea id="editor-textarea" placeholder="Escreva aqui..."></textarea>
+                            <div class="editor-actions">
+                                <button id="btn-save-entry" class="btn-primary" title="Salvar as alterações (Ctrl+S)">Salvar</button>
+                                <span id="save-status"></span>
+                                <button id="btn-delete-entry" class="btn-danger" title="Excluir esta entrada permanentemente">Excluir</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visão do Planejador -->
+            <div id="planner-view" class="view">
+                <div class="planner-container">
+                    <div class="pane-header">
+                        <h2>Planejador</h2>
+                    </div>
+                    <div class="add-event-form">
+                        <h3>Adicionar Novo Evento</h3>
+                        <input type="date" id="planner-date" title="Data do evento">
+                        <input type="text" id="planner-title" placeholder="Descrição do evento" title="Título do evento">
+                        <button id="btn-add-event" class="btn-primary">Adicionar</button>
+                    </div>
+                    <div class="event-list-container">
+                        <h3>Próximos Eventos</h3>
+                        <ul id="event-list" class="item-list">
+                            <!-- Eventos serão injetados aqui pelo script.js -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- O script que controla toda a lógica da interface -->
+    <script src="script.js"></script>
+</body>
+</html>
