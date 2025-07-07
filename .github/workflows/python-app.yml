@@ -18,7 +18,7 @@ jobs:
   build:
     # Define o sistema operacional da máquina virtual que o GitHub vai nos dar.
     # 'ubuntu-latest' é perfeito para nosso projeto Linux.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     # Define a sequência de passos que o job vai executar.
     steps:
