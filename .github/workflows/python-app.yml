@@ -1,54 +1,46 @@
 # .github/workflows/python-app.yml
 
-# Nome do nosso workflow. Aparecerá na aba "Actions" do GitHub.
-name: Testes do Projeto Python
+# Nome do workflow, indicando o ambiente de teste
+name: Teste em Debian 12
 
-# Define os gatilhos: quando este robô deve rodar?
 on:
-  # Roda sempre que houver um push para a branch 'main'
   push:
     branches: [ "main" ]
-  # Roda também quando um Pull Request for aberto para a branch 'main'
   pull_request:
     branches: [ "main" ]
 
-# Define os "trabalhos" (jobs) que o robô vai executar.
 jobs:
-  # Nomeamos nosso job de "build". Poderia ser "testar", "verificar", etc.
-  build:
-    # Define o sistema operacional da máquina virtual que o GitHub vai nos dar.
-    # 'ubuntu-latest' é perfeito para nosso projeto Linux.
-    runs-on: ubuntu-22.04
+  test:
+    # Nome do job para clareza
+    name: Teste em Debian 12 (Bookworm)
 
-    # Define a sequência de passos que o job vai executar.
+    # O job vai rodar em uma máquina virtual base do GitHub
+    runs-on: ubuntu-latest
+
+    # E DENTRO dessa máquina, vai usar um contêiner do Debian 12
+    container:
+      image: debian:12 # Usamos a imagem oficial do Debian 12 (Bookworm)
+
+    # Passos a serem executados dentro do contêiner Debian
     steps:
-      # 1. Baixar o código do seu repositório para a máquina virtual.
-      # Usa uma "Action" pré-feita pela comunidade.
+      # 1. Baixar o código do seu repositório
       - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      # 2. Configurar o ambiente Python na máquina virtual.
-      - name: Configurar Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      # 3. Instalar as dependências do sistema (MUITO IMPORTANTE para a GUI!).
-      # Sem isso, os testes que importam GTK ou WebKit falhariam.
-      - name: Instalar dependências do sistema
+      # 2. Instalar as dependências do sistema no Debian
+      #    - 'apt-get -y' instala sem pedir confirmação
+      #    - 'python3-pip' é necessário para o próximo passo
+      - name: Instalar dependências (Python, GTK, WebKit)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.0
+          apt-get update
+          apt-get install -y python3 python3-pip python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.0
 
-      # 4. Instalar as dependências Python (se houver alguma no futuro).
-      # É uma boa prática manter este passo.
-      - name: Instalar dependências Python
+      # 3. Instalar dependências Python, se houver
+      - name: Instalar dependências Python (via pip)
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python3 -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip3 install -r requirements.txt; fi
 
-      # 5. O passo mais importante: rodar os testes!
-      # Exatamente o mesmo comando que usamos localmente.
+      # 4. Rodar os testes
       - name: Rodar os testes com unittest
-        run: |
-          python3 -m unittest discover tests
+        run: python3 -m unittest discover tests
